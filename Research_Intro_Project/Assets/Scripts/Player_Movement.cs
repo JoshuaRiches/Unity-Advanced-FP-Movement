@@ -21,7 +21,6 @@ public class Player_Movement : MonoBehaviour
 
     [SerializeField] private Rigidbody rb;
 
-
     [Header("Jumping")]
     public float jumpForce;
     public float jumpCooldown;
@@ -46,6 +45,8 @@ public class Player_Movement : MonoBehaviour
     public float maxSlopeAngle;
     private RaycastHit slopeHit;
     private bool exitingSlope;
+
+    private bool isSprinting;
 
     [Header("STATE")]
     public MOVEMENT_STATE state;
@@ -113,17 +114,17 @@ public class Player_Movement : MonoBehaviour
             Invoke(nameof(ResetJump), jumpCooldown);
         }
 
-        if (Input.GetKeyDown(KeyCode.LeftControl))
+        if (Input.GetKeyDown(KeyCode.C) && state != MOVEMENT_STATE.SPRINT)
         {
             transform.localScale = new Vector3(transform.localScale.x, crouchYScale, transform.localScale.z);
             rb.AddForce(Vector3.down * 5f, ForceMode.Impulse);
             crouching = true;
         }
-        if (Input.GetKeyUp(KeyCode.LeftControl) && canStand)
+        if (Input.GetKeyUp(KeyCode.C) && canStand)
         {
             Stand();
         }
-        else if (Input.GetKeyUp(KeyCode.LeftControl) && !canStand)
+        else if (Input.GetKeyUp(KeyCode.C) && !canStand)
         {
             tryingToStand = true;
         }

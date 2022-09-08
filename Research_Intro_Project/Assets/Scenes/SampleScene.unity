@@ -5495,6 +5495,7 @@ GameObject:
   - component: {fileID: 1732460893}
   - component: {fileID: 1732460892}
   - component: {fileID: 1732460894}
+  - component: {fileID: 1732460895}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -5568,6 +5569,25 @@ MonoBehaviour:
     m_Bits: 8
   maxSlopeAngle: 40
   state: 0
+--- !u!114 &1732460895
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1732460891}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 895b6872f889ed7408a2b3ece8b830aa, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  orientation: {fileID: 71555324}
+  player: {fileID: 117108633}
+  rb: {fileID: 1732460892}
+  moveScript: {fileID: 1732460894}
+  maxSlideTime: 0.75
+  slideForce: 200
+  slideYScale: 0.5
 --- !u!1 &1815354203
 GameObject:
   m_ObjectHideFlags: 0
