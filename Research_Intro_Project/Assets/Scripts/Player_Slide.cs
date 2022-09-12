@@ -6,7 +6,6 @@ public class Player_Slide : MonoBehaviour
 {
     [Header("References")]
     public Transform orientation;
-    public Transform player;
     [SerializeField] private Rigidbody rb;
     [SerializeField] private Player_Movement moveScript;
 
@@ -21,12 +20,10 @@ public class Player_Slide : MonoBehaviour
     private float horizontalInput;
     private float forwardInput;
 
-    private bool isSliding;
-
     // Start is called before the first frame update
     void Start()
     {
-        startYScale = player.transform.localScale.y;
+        startYScale = transform.transform.localScale.y;
     }
 
     private void Update()
@@ -40,7 +37,7 @@ public class Player_Slide : MonoBehaviour
         }
 
 
-        if (Input.GetKeyUp(KeyCode.C) && isSliding)
+        if (Input.GetKeyUp(KeyCode.C) && moveScript.isSliding)
         {
             StopSlide();
         }
@@ -48,7 +45,7 @@ public class Player_Slide : MonoBehaviour
 
     private void FixedUpdate()
     {
-        if (isSliding)
+        if (moveScript.isSliding)
         {
             SlidingMovement();
         }
@@ -56,12 +53,12 @@ public class Player_Slide : MonoBehaviour
 
     private void StartSlide()
     {
-        isSliding = true;
-
-        player.localScale = new Vector3(player.localScale.x, slideYScale, player.localScale.z);
+        transform.localScale = new Vector3(transform.localScale.x, slideYScale, transform.localScale.z);
         rb.AddForce(Vector3.down * 5f, ForceMode.Impulse);
 
         slideTimer = maxSlideTime;
+
+        moveScript.isSliding = true;
     }
 
     private void SlidingMovement()
@@ -89,16 +86,6 @@ public class Player_Slide : MonoBehaviour
 
     private void StopSlide()
     {
-        isSliding = false;
-
-        moveScript.SetCrouching(true);
-        moveScript.SetTryingToStand(true);
-
-        //if (!moveScript.GetCanStand())
-        //{
-        //    return;
-        //}
-
-        //player.localScale = new Vector3(player.localScale.x, startYScale, player.localScale.z);
+        moveScript.EndSlide();
     }
 }

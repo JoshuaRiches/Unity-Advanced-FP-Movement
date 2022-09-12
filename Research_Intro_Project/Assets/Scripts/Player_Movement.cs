@@ -10,6 +10,7 @@ public class Player_Movement : MonoBehaviour
     public float walkSpeed;
     public float sprintSpeed;
     public float slideSpeed;
+    public float wallRunSpeed;
 
     public float speedIncreaseMultiplier;
     public float slopeIncreaseMultiplier;
@@ -59,6 +60,11 @@ public class Player_Movement : MonoBehaviour
 
     private bool isSprinting;
 
+    public bool wallRunning;
+
+    [Header("Slide")]
+    public bool isSliding;
+
     [Header("STATE")]
     public MOVEMENT_STATE state;
 
@@ -68,11 +74,11 @@ public class Player_Movement : MonoBehaviour
         SPRINT,
         AIR,
         CROUCHING,
-        SLOPE_SLIDING
+        SLOPE_SLIDING,
+        SLIDING,
+        WALL_RUNNING
     }
 
-    public void SetCrouching(bool isCrouch) { crouching = isCrouch; }
-    public void SetTryingToStand(bool isTryingToStand) { tryingToStand = isTryingToStand; }
     public bool GetCanStand() { return canStand; }
 
     private void Start()
@@ -97,7 +103,7 @@ public class Player_Movement : MonoBehaviour
             slopeSlide.StopSlide();
         }
 
-        if (crouching)
+        if (crouching || isSliding)
         {
             canStand = !Physics.CheckSphere(crouchCheck.position, 1f, groundMask);
 
@@ -132,8 +138,6 @@ public class Player_Movement : MonoBehaviour
         horizontalInput = Input.GetAxisRaw("Horizontal");
         forwardlInput = Input.GetAxisRaw("Vertical");
 
-        Debug.Log(horizontalInput + " + " + forwardlInput);
-
         if (Input.GetKeyDown(KeyCode.Space) && readyToJump && isGrounded)
         {
             readyToJump = false;
@@ -149,6 +153,12 @@ public class Player_Movement : MonoBehaviour
             rb.AddForce(Vector3.down * 5f, ForceMode.Impulse);
             crouching = true;
         }
+
+        if (tryingToStand && !crouching)
+        {
+            crouching = true;
+        }
+
         if (Input.GetKeyUp(KeyCode.C) && canStand)
         {
             Stand();
@@ -159,22 +169,49 @@ public class Player_Movement : MonoBehaviour
         }
     }
 
+    public void EndSlide()
+    {
+        isSliding = false;
+
+        canStand = !Physics.CheckSphere(crouchCheck.position, 1f, groundMask);
+
+        if (canStand)
+        {
+            transform.localScale = new Vector3(transform.localScale.x, startYScale, transform.localScale.z);
+        }
+        else
+        {
+            tryingToStand = true;
+        }
+    }
+
     private void StateHandler()
     {
+        // Wall Running
+        if (wallRunning)
+        {
+            state = MOVEMENT_STATE.WALL_RUNNING;
+            desiredMoveSpeed = wallRunSpeed;
+        }
+
         // Crouch state
         if (crouching)
         {
             state = MOVEMENT_STATE.CROUCHING;
             desiredMoveSpeed = crouchSpeed;
         }
-
+        // Sliding state
+        else if (isSliding)
+        {
+            state = MOVEMENT_STATE.SLIDING;
+            desiredMoveSpeed = sprintSpeed;
+        }
         // Sprinting state
         else if (Input.GetKey(KeyCode.LeftShift) && isGrounded)
         {
             state = MOVEMENT_STATE.SPRINT;
             desiredMoveSpeed = sprintSpeed;
         }
-
         // sliding on slope state
         else if (onSlope)
         {
@@ -189,19 +226,18 @@ public class Player_Movement : MonoBehaviour
                 desiredMoveSpeed = sprintSpeed;
             }
         }
-
         // Walking state
         else if (isGrounded)
         {
             state = MOVEMENT_STATE.WALK;
             desiredMoveSpeed = walkSpeed;
         }
-
         // In air state
         else
         {
             state = MOVEMENT_STATE.AIR;
         }
+
 
         if (horizontalInput == 0 && forwardlInput == 0 && !onSlope)
         {
@@ -209,7 +245,7 @@ public class Player_Movement : MonoBehaviour
             moveSpeed = desiredMoveSpeed;
         }
 
-        if (Mathf.Abs(desiredMoveSpeed - lastDesiredMoveSpeed) > 4f && moveSpeed != 0)
+        if (Mathf.Abs(desiredMoveSpeed - lastDesiredMoveSpeed) > 5f && moveSpeed != 0)
         {
             StopAllCoroutines();
             StartCoroutine(SmoothlyLerpMoveSpeed());
@@ -218,8 +254,6 @@ public class Player_Movement : MonoBehaviour
         {
             moveSpeed = desiredMoveSpeed;
         }
-
-
 
         lastDesiredMoveSpeed = desiredMoveSpeed;
     }
@@ -278,7 +312,7 @@ public class Player_Movement : MonoBehaviour
         }
 
         // turn gravity off whilst on slope
-        rb.useGravity = !OnSlope();
+        if (!wallRunning) rb.useGravity = !OnSlope();
     }
 
     private void SpeedControl()
@@ -304,12 +338,14 @@ public class Player_Movement : MonoBehaviour
         }
     }
 
-    private void Jump()
+    public void Jump()
     {
         exitingSlope = true;
 
         rb.velocity = new Vector3(rb.velocity.x, 0f, rb.velocity.z);
         rb.AddForce(transform.up * jumpForce, ForceMode.Impulse);
+
+        // TO DO: double jump
     }
 
     private void ResetJump()
@@ -334,17 +370,6 @@ public class Player_Movement : MonoBehaviour
 
         return false;
     }
-
-    //public bool OnSteepSlope(float maxAngle, float minAngle)
-    //{
-    //    if (Physics.Raycast(groundCheck.position, Vector3.down, out slopeHit, 0.3f))
-    //    {
-    //        float angle = Vector3.Angle(Vector3.up, slopeHit.normal);
-    //        return angle < maxAngle && angle > minAngle;
-    //    }
-
-    //    return false;
-    //}
 
     public Vector3 GetSlopeMoveDirection(Vector3 direction)
     {
