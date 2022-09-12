@@ -33,11 +33,12 @@ public class Player_Slide : MonoBehaviour
     {
         horizontalInput = Input.GetAxisRaw("Horizontal");
         forwardInput = Input.GetAxisRaw("Vertical");
-
+        
         if (Input.GetKeyDown(KeyCode.C) && (horizontalInput != 0 || forwardInput != 0) && moveScript.state == Player_Movement.MOVEMENT_STATE.SPRINT)
         {
             StartSlide();
         }
+
 
         if (Input.GetKeyUp(KeyCode.C) && isSliding)
         {
@@ -66,9 +67,19 @@ public class Player_Slide : MonoBehaviour
     private void SlidingMovement()
     {
         Vector3 inputDirection = orientation.forward * forwardInput + orientation.right * horizontalInput;
-        rb.AddForce(inputDirection.normalized * slideForce, ForceMode.Force);
 
-        slideTimer -= Time.deltaTime;
+        // sliding normal
+        if (!moveScript.OnSlope() || rb.velocity.y > -0.1f)
+        {
+            rb.AddForce(inputDirection.normalized * slideForce, ForceMode.Force);
+
+            slideTimer -= Time.deltaTime;
+        }
+        // sliding down a slope
+        else
+        {
+            rb.AddForce(moveScript.GetSlopeMoveDirection(inputDirection) * slideForce, ForceMode.Force);
+        }
 
         if (slideTimer <= 0)
         {
@@ -79,6 +90,15 @@ public class Player_Slide : MonoBehaviour
     private void StopSlide()
     {
         isSliding = false;
-        player.localScale = new Vector3(player.localScale.x, startYScale, player.localScale.z);
+
+        moveScript.SetCrouching(true);
+        moveScript.SetTryingToStand(true);
+
+        //if (!moveScript.GetCanStand())
+        //{
+        //    return;
+        //}
+
+        //player.localScale = new Vector3(player.localScale.x, startYScale, player.localScale.z);
     }
 }
