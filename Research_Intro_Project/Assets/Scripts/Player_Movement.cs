@@ -34,6 +34,7 @@ public class Player_Movement : MonoBehaviour
     public float jumpCooldown;
     public float airMultiplier;
     private bool readyToJump = true;
+    private bool doubleJump;
 
     [Header("Crouching")]
     public float crouchSpeed;
@@ -47,7 +48,7 @@ public class Player_Movement : MonoBehaviour
     [Header("Ground Check")]
     [SerializeField] private Transform groundCheck;
     public LayerMask groundMask;
-    bool isGrounded;
+    public bool isGrounded;
 
     [Header("Slope Handling")]
     public float maxSlopeAngle;
@@ -126,6 +127,8 @@ public class Player_Movement : MonoBehaviour
         {
             rb.drag = 0;
         }
+
+        if (isGrounded && !Input.GetKey(KeyCode.Space)) doubleJump = false;
     }
 
     private void FixedUpdate()
@@ -138,9 +141,10 @@ public class Player_Movement : MonoBehaviour
         horizontalInput = Input.GetAxisRaw("Horizontal");
         forwardlInput = Input.GetAxisRaw("Vertical");
 
-        if (Input.GetKeyDown(KeyCode.Space) && readyToJump && isGrounded)
+        if (Input.GetKeyDown(KeyCode.Space) && readyToJump && (isGrounded || doubleJump && !wallRunning))
         {
             readyToJump = false;
+            doubleJump = !doubleJump;
 
             Jump();
 

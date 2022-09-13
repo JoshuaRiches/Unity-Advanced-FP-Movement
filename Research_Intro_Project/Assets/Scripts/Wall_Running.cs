@@ -20,6 +20,8 @@ public class Wall_Running : MonoBehaviour
     private RaycastHit rightWallHit;
     private bool wallLeft;
     private bool wallRight;
+    private Transform detectedWall;
+    private Transform lastWallRun;
 
     [Header("Exiting")]
     private bool exitingWall;
@@ -44,6 +46,11 @@ public class Wall_Running : MonoBehaviour
     {
         CheckForWall();
         StateMachine();
+
+        if (playerMoveScript.isGrounded)
+        {
+            lastWallRun = null;
+        }
     }
 
     private void FixedUpdate()
@@ -58,6 +65,9 @@ public class Wall_Running : MonoBehaviour
     {
         wallRight = Physics.Raycast(transform.position, orientation.right, out rightWallHit, wallCheckDistance, wallMask);
         wallLeft = Physics.Raycast(transform.position, -orientation.right, out leftWallHit, wallCheckDistance, wallMask);
+
+        if (wallRight) detectedWall = rightWallHit.transform;
+        if (wallLeft) detectedWall = leftWallHit.transform;
     }
 
     private bool AboveGround()
@@ -125,6 +135,12 @@ public class Wall_Running : MonoBehaviour
 
     private void StartWallRun()
     {
+        if (detectedWall == lastWallRun)
+        {
+            StopWallRun();
+            return;
+        }
+
         playerMoveScript.wallRunning = true;
 
         wallRunTimer = maxWallRunTime;
@@ -140,7 +156,6 @@ public class Wall_Running : MonoBehaviour
     private void WallRunningMovement()
     {
         rb.useGravity = useGravity;
-
 
         Vector3 wallNormal = wallRight ? rightWallHit.normal : leftWallHit.normal;
 
@@ -164,6 +179,9 @@ public class Wall_Running : MonoBehaviour
         {
             rb.AddForce(transform.up * gravityCounterForce, ForceMode.Force);
         }
+
+        if (wallLeft) lastWallRun = leftWallHit.transform;
+        if (wallRight) lastWallRun = rightWallHit.transform;
     }
 
     private void StopWallRun()
