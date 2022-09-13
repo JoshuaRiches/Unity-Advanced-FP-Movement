@@ -51,6 +51,8 @@ public class Wall_Running : MonoBehaviour
         {
             lastWallRun = null;
         }
+
+        Debug.Log(lastWallRun);
     }
 
     private void FixedUpdate()
@@ -151,6 +153,9 @@ public class Wall_Running : MonoBehaviour
         playerCam.DoFOV(90f);
         if (wallLeft) playerCam.DoTilt(-5f);
         if (wallRight) playerCam.DoTilt(5f);
+
+        if (wallLeft) lastWallRun = leftWallHit.transform;
+        if (wallRight) lastWallRun = rightWallHit.transform;
     }
 
     private void WallRunningMovement()
@@ -179,9 +184,6 @@ public class Wall_Running : MonoBehaviour
         {
             rb.AddForce(transform.up * gravityCounterForce, ForceMode.Force);
         }
-
-        if (wallLeft) lastWallRun = leftWallHit.transform;
-        if (wallRight) lastWallRun = rightWallHit.transform;
     }
 
     private void StopWallRun()
@@ -206,5 +208,7 @@ public class Wall_Running : MonoBehaviour
         // reset vel and add force
         rb.velocity = new Vector3(rb.velocity.x, 0f, rb.velocity.z);
         rb.AddForce(forceToApply, ForceMode.Impulse);
+
+        lastWallRun = null;
     }
 }
