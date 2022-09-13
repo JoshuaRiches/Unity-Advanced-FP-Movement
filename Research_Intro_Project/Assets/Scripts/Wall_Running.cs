@@ -187,7 +187,7 @@ public class Wall_Running : MonoBehaviour
     private void StopWallRun()
     {
         playerMoveScript.wallRunning = false;
-
+        playerMoveScript.doubleJump = true;
         // reset camera fx
         playerCam.DoFOV(70f);
         playerCam.DoTilt(0f);

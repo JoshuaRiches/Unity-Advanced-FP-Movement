@@ -34,7 +34,7 @@ public class Player_Movement : MonoBehaviour
     public float jumpCooldown;
     public float airMultiplier;
     private bool readyToJump = true;
-    private bool doubleJump;
+    public bool doubleJump;
 
     [Header("Crouching")]
     public float crouchSpeed;
@@ -129,6 +129,7 @@ public class Player_Movement : MonoBehaviour
         }
 
         if (isGrounded && !Input.GetKey(KeyCode.Space)) doubleJump = false;
+        if (wallRunning) doubleJump = false;
     }
 
     private void FixedUpdate()
