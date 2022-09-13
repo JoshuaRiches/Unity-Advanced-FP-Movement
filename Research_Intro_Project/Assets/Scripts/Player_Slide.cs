@@ -53,12 +53,12 @@ public class Player_Slide : MonoBehaviour
 
     private void StartSlide()
     {
+        moveScript.isSliding = true;
+
         transform.localScale = new Vector3(transform.localScale.x, slideYScale, transform.localScale.z);
         rb.AddForce(Vector3.down * 5f, ForceMode.Impulse);
 
         slideTimer = maxSlideTime;
-
-        moveScript.isSliding = true;
     }
 
     private void SlidingMovement()

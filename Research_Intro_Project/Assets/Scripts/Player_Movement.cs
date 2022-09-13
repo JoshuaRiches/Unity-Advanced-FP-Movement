@@ -9,7 +9,7 @@ public class Player_Movement : MonoBehaviour
 
     public float walkSpeed;
     public float sprintSpeed;
-    public float slideSpeed;
+    public float slopeSpeed;
     public float wallRunSpeed;
 
     public float speedIncreaseMultiplier;
@@ -65,6 +65,8 @@ public class Player_Movement : MonoBehaviour
 
     [Header("Slide")]
     public bool isSliding;
+    private bool wasSliding;
+    public float slideSpeed;
 
     [Header("STATE")]
     public MOVEMENT_STATE state;
@@ -130,6 +132,10 @@ public class Player_Movement : MonoBehaviour
 
         if (isGrounded && !Input.GetKey(KeyCode.Space)) doubleJump = false;
         if (wallRunning) doubleJump = false;
+
+
+
+        Debug.Log(rb.velocity);
     }
 
     private void FixedUpdate()
@@ -164,6 +170,8 @@ public class Player_Movement : MonoBehaviour
             crouching = true;
         }
 
+        if (Input.GetKeyUp(KeyCode.C)) wasSliding = false;
+
         if (Input.GetKeyUp(KeyCode.C) && canStand)
         {
             Stand();
@@ -172,11 +180,19 @@ public class Player_Movement : MonoBehaviour
         {
             tryingToStand = true;
         }
+
+        if (Input.GetKey(KeyCode.C) && wasSliding && !crouching)
+        {
+            crouching = true;
+            transform.localScale = new Vector3(transform.localScale.x, crouchYScale, transform.localScale.z);
+            rb.AddForce(Vector3.down * 5f, ForceMode.Impulse);
+        }
     }
 
     public void EndSlide()
     {
         isSliding = false;
+        wasSliding = true;
 
         canStand = !Physics.CheckSphere(crouchCheck.position, 1f, groundMask);
 
@@ -209,13 +225,14 @@ public class Player_Movement : MonoBehaviour
         else if (isSliding)
         {
             state = MOVEMENT_STATE.SLIDING;
-            desiredMoveSpeed = sprintSpeed;
+            desiredMoveSpeed = slideSpeed;
         }
         // Sprinting state
-        else if (Input.GetKey(KeyCode.LeftShift) && isGrounded)
+        else if (Input.GetKey(KeyCode.LeftShift) && isGrounded && !isSliding)
         {
             state = MOVEMENT_STATE.SPRINT;
             desiredMoveSpeed = sprintSpeed;
+            moveSpeed = desiredMoveSpeed;
         }
         // sliding on slope state
         else if (onSlope)
@@ -224,7 +241,7 @@ public class Player_Movement : MonoBehaviour
 
             if (rb.velocity.y < 0.1f)
             {
-                desiredMoveSpeed = slideSpeed;
+                desiredMoveSpeed = slopeSpeed;
             }
             else
             {
@@ -249,8 +266,7 @@ public class Player_Movement : MonoBehaviour
             StopAllCoroutines();
             moveSpeed = desiredMoveSpeed;
         }
-
-        if (Mathf.Abs(desiredMoveSpeed - lastDesiredMoveSpeed) > 5f && moveSpeed != 0)
+        else if (Mathf.Abs(desiredMoveSpeed - lastDesiredMoveSpeed) > 5f && moveSpeed != 0)
         {
             StopAllCoroutines();
             StartCoroutine(SmoothlyLerpMoveSpeed());
@@ -350,7 +366,7 @@ public class Player_Movement : MonoBehaviour
         rb.velocity = new Vector3(rb.velocity.x, 0f, rb.velocity.z);
         rb.AddForce(transform.up * jumpForce, ForceMode.Impulse);
 
-        // TO DO: double jump
+        EndSlide();
     }
 
     private void ResetJump()
