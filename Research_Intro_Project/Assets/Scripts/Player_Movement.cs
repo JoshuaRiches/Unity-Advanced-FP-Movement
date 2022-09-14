@@ -132,10 +132,6 @@ public class Player_Movement : MonoBehaviour
 
         if (isGrounded && !Input.GetKey(KeyCode.Space)) doubleJump = false;
         if (wallRunning) doubleJump = false;
-
-
-
-        Debug.Log(rb.velocity);
     }
 
     private void FixedUpdate()
@@ -157,6 +153,8 @@ public class Player_Movement : MonoBehaviour
 
             Invoke(nameof(ResetJump), jumpCooldown);
         }
+
+        // TO DO: lower force of double jump
 
         if (Input.GetKeyDown(KeyCode.C) && state != MOVEMENT_STATE.SPRINT)
         {
