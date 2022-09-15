@@ -45,7 +45,7 @@ public class Slope_Slide : MonoBehaviour
         isSliding = true;
 
         player.localScale = new Vector3(player.localScale.x, slideYScale, player.localScale.z);
-        rb.AddForce(Vector3.down * 100f, ForceMode.Impulse);
+        rb.AddForce(Vector3.down * 20f, ForceMode.Impulse);
     }
 
     private void SlidingMovement()

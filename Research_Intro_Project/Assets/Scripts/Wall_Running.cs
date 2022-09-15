@@ -51,8 +51,6 @@ public class Wall_Running : MonoBehaviour
         {
             lastWallRun = null;
         }
-
-        Debug.Log(lastWallRun);
     }
 
     private void FixedUpdate()

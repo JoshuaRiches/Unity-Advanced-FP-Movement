@@ -142,7 +142,7 @@ public class Player_Movement : MonoBehaviour
     private void MoveInput()
     {
         horizontalInput = Input.GetAxisRaw("Horizontal");
-        forwardlInput = Input.GetAxisRaw("Vertical");
+        if (!onSlope) forwardlInput = Input.GetAxisRaw("Vertical");
 
         if (Input.GetKeyDown(KeyCode.Space) && readyToJump && (isGrounded || doubleJump && !wallRunning))
         {
