@@ -13,11 +13,12 @@ public class Gun_Shooting : MonoBehaviour
     public bool isFullAuto;
 
     [Header("References")]
-    public ParticleSystem muzzleFlash;
-    public ParticleSystem reloadVent;
-    public ParticleSystem hitFX;
+    public GameObject muzzleFlash;
+    public GameObject reloadVent;
+    public GameObject hitFX;
     public Transform firePoint;
     public LayerMask enemyLayer;
+    public Camera cam;
 
     private RaycastHit targetHit;
 
@@ -50,11 +51,12 @@ public class Gun_Shooting : MonoBehaviour
 
     private void Fire()
     {
-        Instantiate(muzzleFlash, firePoint.position, Quaternion.identity);
+        GameObject flash = Instantiate(muzzleFlash, firePoint.position, Quaternion.LookRotation(firePoint.forward), firePoint);
+        flash.transform.localScale *= 7;
 
-        bool hasHit = Physics.Raycast(firePoint.position, Vector3.forward, out targetHit, gunRange, enemyLayer);
+        bool hasHit = Physics.Raycast(cam.transform.position, cam.transform.forward, out targetHit, gunRange);
 
-        if (hasHit)
+        if (hasHit && targetHit.transform.tag != "Player")
         {
             Quaternion rot = Quaternion.LookRotation(targetHit.normal);
             Instantiate(hitFX, targetHit.point, rot);

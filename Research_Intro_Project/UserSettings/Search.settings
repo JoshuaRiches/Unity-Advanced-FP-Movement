@@ -7,13 +7,13 @@ onBoardingDoNotAskAgain = true
 showPackageIndexes = false
 showStatusBar = false
 scopes = {
-	"last_search.BDE7F5D3" = ""
+	"last_search.BDE7F5D3" = "mu"
 	"OpenInspectorPreview.BDE7F5D3" = "0"
 	"currentGroup.BDE7F5D3" = "all"
 	"last_search.EE2249FF" = ""
 	"OpenInspectorPreview.EE2249FF" = "0"
 	"currentGroup.EE2249FF" = "all"
-	"last_search.E4EB812F" = "flas"
+	"last_search.E4EB812F" = "sm"
 	"OpenInspectorPreview.E4EB812F" = "0"
 	"currentGroup.E4EB812F" = "all"
 }
