@@ -22,6 +22,7 @@ public class Gun_Shooting : MonoBehaviour
 
     private RaycastHit targetHit;
 
+
     private void Start()
     {
         currentClip = maxClip;
