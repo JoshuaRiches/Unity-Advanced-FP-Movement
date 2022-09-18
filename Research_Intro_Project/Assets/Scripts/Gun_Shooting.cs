@@ -8,9 +8,10 @@ public class Gun_Shooting : MonoBehaviour
     public float fireRate;
     private float fireCooldown;
     public float gunRange;
-    public float maxClip;
-    private float currentClip;
+    //public float maxClip;
+    //private float currentClip;
     public bool isFullAuto;
+    public float damage;
 
     [Header("References")]
     public GameObject muzzleFlash;
@@ -25,7 +26,7 @@ public class Gun_Shooting : MonoBehaviour
 
     private void Start()
     {
-        currentClip = maxClip;
+        //currentClip = maxClip;
     }
 
     private void Update()
@@ -61,6 +62,11 @@ public class Gun_Shooting : MonoBehaviour
         {
             Quaternion rot = Quaternion.LookRotation(targetHit.normal);
             Instantiate(hitFX, targetHit.point, rot);
+
+            if (targetHit.transform.tag == "Enemy")
+            {
+                targetHit.transform.GetComponent<Enemy>().Damage(damage);
+            }
         }
     }
 }
