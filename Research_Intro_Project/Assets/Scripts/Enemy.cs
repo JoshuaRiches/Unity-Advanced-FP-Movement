@@ -15,26 +15,35 @@ public class Enemy : MonoBehaviour
     public Vector3 endPos;
     private Vector3 targetPos;
     public bool isMoving;
+    private Quaternion rot;
 
     private void Start()
     {
         currentHp = maxHp;
         targetPos = endPos;
+
+        rot = new Quaternion(0, 180f, 0, 0);
     }
 
     private void Update()
     {
-        if (!isMoving) return;
-
-        if (Vector3.Magnitude(transform.position - targetPos) > 0.5f)
+        if (isMoving)
         {
-            transform.position = Vector3.Lerp(transform.position, targetPos, moveSpeed * Time.deltaTime);
+            if (Vector3.Magnitude(transform.position - targetPos) > 0.5f)
+            {
+                transform.position = Vector3.Lerp(transform.position, targetPos, moveSpeed * Time.deltaTime);
+            }
+
+            if (Vector3.Magnitude(transform.position - targetPos) <= 0.5f)
+            {
+                if (targetPos == startPos) targetPos = endPos;
+                else targetPos = startPos;
+            }
         }
 
-        if (Vector3.Magnitude(transform.position - targetPos) <= 0.5f)
+        if (isDead)
         {
-            if (targetPos == startPos) targetPos = endPos;
-            else targetPos = startPos;
+            transform.rotation = Quaternion.Lerp(transform.rotation, rot, 0.01f * Time.deltaTime);
         }
     }
 
@@ -53,6 +62,5 @@ public class Enemy : MonoBehaviour
     private void Defeated()
     {
         isDead = true;
-        transform.Rotate(Vector3.up, 180f);
     }
 }
