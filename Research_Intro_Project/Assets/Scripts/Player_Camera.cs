@@ -5,14 +5,25 @@ using DG.Tweening;
 
 public class Player_Camera : MonoBehaviour
 {
+    #region VARIABLES
+    [Header("Controls")]
+    private PlayerControls controls;
     public float sensitivityX;
     public float sensitivityY;
 
-    [SerializeField] private Transform orientation;
-    [SerializeField] private Transform camHolder;
+    [Header("Components")]
+    public Transform orientation;
+    public Transform camHolder;
 
     private float xRotation;
     private float yRotation;
+    #endregion
+
+    #region INITIALISE
+    private void Awake()
+    {
+        controls = new PlayerControls();
+    }
 
     private void Start()
     {
@@ -20,10 +31,21 @@ public class Player_Camera : MonoBehaviour
         Cursor.visible = false;
     }
 
+    private void OnEnable()
+    {
+        controls.Enable();
+    }
+    private void OnDisable()
+    {
+        controls.Disable();
+    }
+    #endregion
+
+    #region UPDATE
     private void Update()
     {
-        float mouseX = Input.GetAxisRaw("Mouse X") * Time.deltaTime * sensitivityX;
-        float mouseY = Input.GetAxisRaw("Mouse Y") * Time.deltaTime * sensitivityY;
+        float mouseX = controls.Player.Look.ReadValue<Vector2>().x * Time.deltaTime * sensitivityX;
+        float mouseY = controls.Player.Look.ReadValue<Vector2>().y * Time.deltaTime * sensitivityY;
 
         yRotation += mouseX;
 
@@ -34,6 +56,7 @@ public class Player_Camera : MonoBehaviour
         orientation.rotation = Quaternion.Euler(0, yRotation, 0);
 
     }
+    #endregion
 
     public void DoFOV(float endValue)
     {
