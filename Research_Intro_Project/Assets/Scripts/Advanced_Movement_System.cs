@@ -13,6 +13,7 @@ public class Advanced_Movement_System : MonoBehaviour
     public Rigidbody rigidBody;
     public Transform playerCollider;
     public Transform crouchCheck;
+    public Player_Camera playerCam;
 
     [Header("Movement")]
     public float groundDrag;
@@ -38,34 +39,31 @@ public class Advanced_Movement_System : MonoBehaviour
     private bool isGrounded;
 
     [Header("Jumping")]
-    private bool readyToJump = true;
-    private bool doubleJump;
     public float jumpCooldown;
     public float jumpForce;
+    private bool readyToJump = true;
+    private bool doubleJump;
 
     [Header("Aerial Movement")]
     public float airMultiplier;
 
-    [Header("Wall Running")]
-    private bool wallRunning;
-
     [Header("Slope Handling")]
+    public LayerMask slopeMask;
     private float maxSlopeAngle;
     private RaycastHit slopeHit;
-    public LayerMask slopeMask;
     private bool exitingSlope;
     private bool onSlope;
     private bool isSlopeSliding;
     public float slideYScale;
 
     [Header("Crouching")]
-    private bool crouching;
     public float crouchYScale;
+    private bool crouching;
 
     [Header("Crouch Slide")]
+    public float crouchSlideYScale;
     private bool isCrouchSlide;
     private bool wasCrouchSliding;
-    public float crouchSlideYScale;
     public float slideForce;
     private float slideTimer;
     public float maxSlideTime;
@@ -75,9 +73,36 @@ public class Advanced_Movement_System : MonoBehaviour
     private bool canStand;
     private bool tryingToStand;
 
-    #region InputVariables
+    [Header("Wall Running")]
+    public LayerMask wallMask;
+    private bool wallRunning;
+    public float wallRunForce;
+    public float wallJumpUpForce;
+    public float wallJumpSideForce;
+    public float maxWallRunTime;
+    private float wallRunTimer;
+
+    [Header("Wall Detection")]
+    public float wallCheckDistance;
+    public float minJumpHeight;
+    private RaycastHit leftWallHit;
+    private RaycastHit rightWallHit;
+    private bool wallLeft;
+    private bool wallRight;
+    private Transform detectedWall;
+    private Transform lastWallRun;
+
+    [Header("Exit Wall Run")]
+    public float exitWallTime;
+    private bool exitingWall;
+    private float exitWallTimer;
+
+    [Header("Wall Run Gravity")]
+    public bool useGravity;
+    public float gravityCounterForce;
+
+    [Header("Input Variables")]
     private Vector2 moveInput;
-    #endregion
 
     #endregion
 
@@ -224,6 +249,9 @@ public class Advanced_Movement_System : MonoBehaviour
             StopSliding();
         }
 
+        // Check if there is a wall either side of the player that they can run along
+        CheckForWall();
+
         // if crouching or sliding, check to see if there is an obstacle that would stop them from standing up
         if (crouching || isCrouchSlide)
         {
@@ -235,6 +263,9 @@ public class Advanced_Movement_System : MonoBehaviour
 
         // Manages what state the player is in
         StateHandler();
+
+        // Manages the wall running state
+        WallRunState();
 
         //if the player is trying to stand but not crouching, set it so they are crouching (otherwise it will bug)
         if (tryingToStand && !crouching) crouching = true;
@@ -250,24 +281,32 @@ public class Advanced_Movement_System : MonoBehaviour
 
     private void FixedUpdate()
     {
-        // Function that moves the player
-        MovePlayer();
-
         // when player is on a slope, use the slope movement
         if (OnSlope() && !exitingSlope)
         {
             SlopeMovement();
         }
 
-        if (isSlopeSliding)
+        else if (isSlopeSliding)
         {
             // Function that moves the player when on a slope slide
             SlidingMovement();
         }
 
-        if (isCrouchSlide)
+        else if (isCrouchSlide)
         {
             CrouchSlideMove();
+        }
+
+        else if (wallRunning)
+        {
+            WallRunningMove();
+        }
+
+        else
+        {
+            // Function that moves the player
+            MovePlayer();
         }
 
         // if the player isnt wallrunning or on a slope then gravity should be on
@@ -603,18 +642,181 @@ public class Advanced_Movement_System : MonoBehaviour
         // check if there is a ground object under the player
         isGrounded = Physics.CheckSphere(groundCheck.position, 0.4f, groundMask);
 
-        // Apply drag to the player
         if (isGrounded)
         {
+            // Apply drag to the player
             rigidBody.drag = groundDrag;
 
+            // reset double jump
             if (!controls.Player.Jump.inProgress) doubleJump = false;
+
+            // reset wall run
+            lastWallRun = null;
         }
         else
         {
             // when in air there shouldnt be drag slowing down movement (not following real physics due to approximations and creating smooth player experience)
             rigidBody.drag = 0f;
         }
+    }
+    #endregion
+
+    #region WALL RUNNING
+    private void CheckForWall()
+    {
+        // check for a runnable wall to the right of the player
+        wallRight = Physics.Raycast(transform.position, orientation.right, out rightWallHit, wallCheckDistance, wallMask);
+        // check for a runnable wall to the left of the player
+        wallLeft = Physics.Raycast(transform.position, -orientation.right, out leftWallHit, wallCheckDistance, wallMask);
+
+        // if a wall is detected, assign it as the detected wall
+        if (wallRight) detectedWall = rightWallHit.transform;
+        if (wallLeft) detectedWall = leftWallHit.transform;
+    }
+
+    private void WallRunState()
+    {
+        // State 1 - wall running
+        if ((wallLeft || wallRight) && moveInput.y > 0 && AboveGround() && !exitingWall)
+        {
+            if (!wallRunning)
+            {
+                StartWallRun();
+            }
+
+            if (wallRunTimer > 0)
+            {
+                wallRunTimer -= Time.deltaTime;
+            }
+
+            if (wallRunTimer <= 0 && wallRunning)
+            {
+                exitingWall = true;
+                exitWallTimer = exitWallTime;
+            }
+
+            if (Input.GetKeyDown(KeyCode.Space))
+            {
+                WallJump();
+            }
+        }
+        // State 2 - exiting
+        else if (exitingWall)
+        {
+            if (wallRunning)
+            {
+                StopWallRun();
+            }
+
+            if (exitWallTimer > 0)
+            {
+                exitWallTimer -= Time.deltaTime;
+            }
+
+            if (exitWallTimer <= 0)
+            {
+                exitingWall = false;
+            }
+        }
+
+        // State 3 - none
+        else
+        {
+            if (wallRunning)
+            {
+                StopWallRun();
+            }
+        }
+    }
+
+    private void StartWallRun()
+    {
+        // if the wall detected is the same as the last one, dont start wall running
+        if (detectedWall == lastWallRun)
+        {
+            StopWallRun();
+            return;
+        }
+
+        wallRunning = true;
+        // reset wall run timer
+        wallRunTimer = maxWallRunTime;
+        // reset y velocity of the player
+        rigidBody.velocity = new Vector3(rigidBody.velocity.x, 0f, rigidBody.velocity.z);
+
+        // Apply camera effects
+        playerCam.DoFOV(90f);
+        if (wallLeft) playerCam.DoTilt(-5f);
+        if (wallRight) playerCam.DoTilt(5f);
+
+        if (wallLeft) lastWallRun = leftWallHit.transform;
+        if (wallRight) lastWallRun = rightWallHit.transform;
+    }
+
+    private void WallRunningMove()
+    {
+        // set whether gravity is being used or not
+        rigidBody.useGravity = useGravity;
+
+        // calculate the normal of the wall that was hit
+        Vector3 wallNormal = wallRight ? rightWallHit.normal : leftWallHit.normal;
+
+        // calculate the forward vector of the wall
+        Vector3 wallForward = Vector3.Cross(wallNormal, transform.up);
+
+        // calculate which direction the player is moving in
+        if ((orientation.forward - wallForward).magnitude > (orientation.forward - -wallForward).magnitude)
+        {
+            wallForward = -wallForward;
+        }
+
+        // apply the movement force along the wall
+        rigidBody.AddForce(wallForward * wallRunForce, ForceMode.Force);
+
+        // push to wall force
+        if (!(wallLeft && moveInput.x > 0) && !(wallRight && moveInput.x < 0))
+        {
+            rigidBody.AddForce(-wallNormal * 100, ForceMode.Force);
+        }
+
+        // Weaken Gravity
+        if (useGravity)
+        {
+            rigidBody.AddForce(transform.up * gravityCounterForce, ForceMode.Force);
+        }
+    }
+
+    private void StopWallRun()
+    {
+        wallRunning = false;
+        doubleJump = true;
+
+        // reset camera fx
+        playerCam.DoFOV(70f);
+        playerCam.DoTilt(0f);
+    }
+
+    private void WallJump()
+    {
+        // enter exiting wall state
+        exitingWall = true;
+        exitWallTimer = exitWallTime;
+
+        // calculate normal of the wall
+        Vector3 wallNormal = wallRight ? rightWallHit.normal : leftWallHit.normal;
+        // calculate the force to apply when jumping
+        Vector3 forceToApply = transform.up * wallJumpUpForce + wallNormal * wallJumpSideForce;
+
+        // reset vel and add force
+        rigidBody.velocity = new Vector3(rigidBody.velocity.x, 0f, rigidBody.velocity.z);
+        rigidBody.AddForce(forceToApply, ForceMode.Impulse);
+
+        lastWallRun = null;
+    }
+
+    private bool AboveGround()
+    {
+        return !Physics.Raycast(transform.position, Vector3.down, minJumpHeight, groundMask);
     }
     #endregion
 }
