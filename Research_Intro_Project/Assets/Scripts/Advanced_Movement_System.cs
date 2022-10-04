@@ -121,8 +121,6 @@ public class Advanced_Movement_System : MonoBehaviour
         controls.Player.Jump.performed += ctx => Jump();
         // Crouch when the crouch control is pressed
         controls.Player.Crouch.started += ctx => StartCrouch();
-        // When the player holds crouch, keep them crouched
-        controls.Player.Crouch.performed += ctx => Crouch();
         // when crouch is released, cancel the crouch
         controls.Player.Crouch.canceled += ctx => CancelCrouch();
     }
@@ -411,6 +409,12 @@ public class Advanced_Movement_System : MonoBehaviour
     {
         if (!readyToJump) return; // early out
 
+        if (wallRunning)
+        {
+            WallJump();
+            return;
+        }
+
         // if player is grounded or has a double jump to use and is not wall running, jump
         if (isGrounded || doubleJump && !wallRunning)
         {
@@ -457,17 +461,6 @@ public class Advanced_Movement_System : MonoBehaviour
             StartCrouchSlide();
         }
     }
-
-    private void Crouch()
-    {
-        // if player was sliding and isnt crouching, set them to be crouching
-        if (wasCrouchSliding && !crouching)
-        {
-            crouching = true;
-            ReducePlayerScale(crouchYScale, 5);
-        }
-    }
-
     private void CancelCrouch()
     {
         if (isCrouchSlide)
@@ -540,9 +533,13 @@ public class Advanced_Movement_System : MonoBehaviour
 
         CheckCanStand();
 
-        if (canStand)
+        if (canStand && !controls.Player.Crouch.inProgress)
         {
             IncreasePlayerScale();
+        }
+        else if (controls.Player.Crouch.inProgress)
+        {
+            crouching = true;
         }
         else
         {
@@ -693,11 +690,6 @@ public class Advanced_Movement_System : MonoBehaviour
             {
                 exitingWall = true;
                 exitWallTimer = exitWallTime;
-            }
-
-            if (Input.GetKeyDown(KeyCode.Space))
-            {
-                WallJump();
             }
         }
         // State 2 - exiting
