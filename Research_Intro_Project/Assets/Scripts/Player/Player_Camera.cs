@@ -42,19 +42,20 @@ public class Player_Camera : MonoBehaviour
     #endregion
 
     #region UPDATE
-    private void Update()
+    private void LateUpdate()
     {
-        float mouseX = controls.Player.Look.ReadValue<Vector2>().x * Time.deltaTime * sensitivityX;
-        float mouseY = controls.Player.Look.ReadValue<Vector2>().y * Time.deltaTime * sensitivityY;
+        //float mouseX = controls.Player.Look.ReadValue<Vector2>().x * Time.deltaTime * sensitivityX;
+        //float mouseY = controls.Player.Look.ReadValue<Vector2>().y * Time.deltaTime * sensitivityY;
 
-        yRotation += mouseX;
+        //yRotation += mouseX;
 
-        xRotation -= mouseY;
-        xRotation = Mathf.Clamp(xRotation, -90f, 90f);
+        //xRotation -= mouseY;
+        //xRotation = Mathf.Clamp(xRotation, -90f, 90f);
 
-        camHolder.rotation = Quaternion.Euler(xRotation, yRotation, 0f);
-        orientation.rotation = Quaternion.Euler(0, yRotation, 0);
+        //camHolder.rotation = Quaternion.Euler(xRotation, yRotation, 0f);
+        //orientation.rotation = Quaternion.Euler(0, yRotation, 0);
 
+        //orientation.rotation = Quaternion.Euler(0, transform.rotation.eulerAngles.y, 0);
     }
     #endregion
 

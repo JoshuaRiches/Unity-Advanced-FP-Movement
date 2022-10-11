@@ -6,14 +6,13 @@ public class Advanced_Movement_System : MonoBehaviour
 {
     #region VARIABLES
     [Header("Controls")]
-    private PlayerControls controls;
+    private InputManager controls;
 
     [Header("Components")]
-    public Transform orientation;
     public Rigidbody rigidBody;
-    public Transform playerCollider;
+    public CapsuleCollider playerCollider;
     public Transform crouchCheck;
-    public Player_Camera playerCam;
+    public Transform playerCam;
 
     [Header("Movement")]
     public float groundDrag;
@@ -109,31 +108,19 @@ public class Advanced_Movement_System : MonoBehaviour
     #region INITIALISE
     private void Awake()
     {
-        controls = new PlayerControls();
+        controls = InputManager.Instance;
     }
 
     private void Start()
     {
-        // get the starting scale of the players collider
-        startYScale = playerCollider.localScale.y;
+        startYScale = gameObject.transform.localScale.y;
 
         // jump when the jump control is pressed
-        controls.Player.Jump.performed += ctx => Jump();
+        controls.playerControls.Player.Jump.performed += ctx => Jump();
         // Crouch when the crouch control is pressed
-        controls.Player.Crouch.started += ctx => StartCrouch();
+        controls.playerControls.Player.Crouch.started += ctx => StartCrouch();
         // when crouch is released, cancel the crouch
-        controls.Player.Crouch.canceled += ctx => CancelCrouch();
-    }
-
-    private void OnEnable()
-    {
-        // enable the input system
-        controls.Enable();
-    }
-    private void OnDisable()
-    {
-        // disable input system
-        controls.Disable();
+        controls.playerControls.Player.Crouch.canceled += ctx => CancelCrouch();
     }
     #endregion
 
@@ -172,7 +159,7 @@ public class Advanced_Movement_System : MonoBehaviour
             desiredMoveSpeed = crouchSlideSpeed;
         }
         // Sprinting state
-        else if (controls.Player.Sprint.inProgress && isGrounded && !isCrouchSlide)
+        else if (controls.playerControls.Player.Sprint.inProgress && isGrounded && !isCrouchSlide)
         {
             state = MOVEMENT_STATE.SPRINT;
             desiredMoveSpeed = sprintSpeed;
@@ -231,6 +218,7 @@ public class Advanced_Movement_System : MonoBehaviour
     {
         // Function that checks if player is on ground
         GroundCheck();
+
         // function that checks for any inputs
         Inputs();
         // function that checks if player is on a slope
@@ -320,7 +308,7 @@ public class Advanced_Movement_System : MonoBehaviour
     private void Inputs()
     {
         // Get the input for the movement axis (wasd, joystick, etc)
-        moveInput = controls.Player.Move.ReadValue<Vector2>();
+        moveInput = controls.GetPlayerMovement();
     }
     #endregion
 
@@ -331,7 +319,9 @@ public class Advanced_Movement_System : MonoBehaviour
         // TODO: stop movement for forward when on slope
 
         // Calculate the direction in which to move
-        Vector3 v3MoveDir = orientation.forward * moveInput.y + orientation.right * moveInput.x;
+        //Vector3 facingDir = new Vector3(playerCam.transform.forward.x, 0, playerCam.transform.forward.z).normalized;
+        Vector3 v3MoveDir = playerCam.forward * moveInput.y + playerCam.right * moveInput.x;
+        v3MoveDir.y = 0;
 
         if (isGrounded)
         {
@@ -449,6 +439,7 @@ public class Advanced_Movement_System : MonoBehaviour
 
     private void StartCrouch()
     {
+        if (crouching) return;
         // if the player isnt sprinting, make player crouch
         if (state != MOVEMENT_STATE.SPRINT)
         {
@@ -507,17 +498,17 @@ public class Advanced_Movement_System : MonoBehaviour
 
     private void CrouchSlideMove()
     {
-        Vector3 inputDirection = orientation.forward * moveInput.y + orientation.right * moveInput.x;
+        Vector3 v3MoveDir = playerCam.forward * moveInput.y + playerCam.right * moveInput.x;
 
         if (OnSlope() || rigidBody.velocity.y > -0.1f)
         {
-            rigidBody.AddForce(inputDirection.normalized * slideForce, ForceMode.Force);
+            rigidBody.AddForce(v3MoveDir.normalized * slideForce, ForceMode.Force);
 
             slideTimer -= Time.deltaTime;
         }
         else
         {
-            rigidBody.AddForce(GetSlopeMoveDirection(inputDirection) * slideForce, ForceMode.Force);
+            rigidBody.AddForce(GetSlopeMoveDirection(v3MoveDir) * slideForce, ForceMode.Force);
         }
 
         if (slideTimer <= 0f)
@@ -533,11 +524,11 @@ public class Advanced_Movement_System : MonoBehaviour
 
         CheckCanStand();
 
-        if (canStand && !controls.Player.Crouch.inProgress)
+        if (canStand && !controls.playerControls.Player.Crouch.inProgress)
         {
             IncreasePlayerScale();
         }
-        else if (controls.Player.Crouch.inProgress)
+        else if (controls.playerControls.Player.Crouch.inProgress)
         {
             crouching = true;
         }
@@ -552,7 +543,7 @@ public class Advanced_Movement_System : MonoBehaviour
     private void SlopeMovement()
     {
         // Calculate the direction in which to move
-        Vector3 v3MoveDir = orientation.forward * moveInput.y + orientation.right * moveInput.x;
+        Vector3 v3MoveDir = playerCam.forward * moveInput.y + playerCam.right * moveInput.x;
         // add the slope movement force
         rigidBody.AddForce(GetSlopeMoveDirection(v3MoveDir) * moveSpeed * 10f, ForceMode.Force);
 
@@ -588,6 +579,7 @@ public class Advanced_Movement_System : MonoBehaviour
     {
         // checks if the player is on a slope object
         onSlope = Physics.CheckSphere(groundCheck.position, 0.4f, slopeMask);
+        //Debug.DrawRay(groundCheck.position, Vector3.down * 0.4f, Color.red);
     }
 
     private void StartSliding()
@@ -607,9 +599,9 @@ public class Advanced_Movement_System : MonoBehaviour
     private void SlidingMovement()
     {
         // calculates direction of movement (always moving forward even without an input)
-        Vector3 inputDirection = orientation.forward * 1f + orientation.right * moveInput.x;
+        Vector3 v3MoveDir = playerCam.forward * moveInput.y + playerCam.right * moveInput.x;
         // Applies the movement force to make the player move down the slope
-        rigidBody.AddForce(GetSlopeMoveDirection(inputDirection) * 10f * moveSpeed, ForceMode.Force);
+        rigidBody.AddForce(GetSlopeMoveDirection(v3MoveDir) * 10f * moveSpeed, ForceMode.Force);
     }
     #endregion
 
@@ -617,7 +609,7 @@ public class Advanced_Movement_System : MonoBehaviour
     private void ReducePlayerScale(float scale, float force)
     {
         // reduces the scale of the collider object
-        playerCollider.localScale = new Vector3(playerCollider.localScale.x, scale, playerCollider.localScale.z);
+        gameObject.transform.localScale = new Vector3(gameObject.transform.localScale.x, gameObject.transform.localScale.y * scale, gameObject.transform.localScale.z);
         // Push the player toward the ground
         rigidBody.AddForce(Vector3.down * force, ForceMode.Impulse);
 
@@ -627,8 +619,7 @@ public class Advanced_Movement_System : MonoBehaviour
     private void IncreasePlayerScale()
     {
         // Increase the scale of the collider object back to original scale
-        playerCollider.localScale = new Vector3(playerCollider.localScale.x, startYScale, playerCollider.localScale.z);
-
+        gameObject.transform.localScale = new Vector3(gameObject.transform.localScale.x, startYScale, gameObject.transform.localScale.z);
         // IDEALLY THERE WOULD BE AN ANIMATION THAT WOULD BE TRANSITIONED BACK TO STANDING HERE
     }
     #endregion
@@ -645,7 +636,7 @@ public class Advanced_Movement_System : MonoBehaviour
             rigidBody.drag = groundDrag;
 
             // reset double jump
-            if (!controls.Player.Jump.inProgress) doubleJump = false;
+            if (!controls.playerControls.Player.Jump.inProgress) doubleJump = false;
 
             // reset wall run
             lastWallRun = null;
@@ -662,9 +653,9 @@ public class Advanced_Movement_System : MonoBehaviour
     private void CheckForWall()
     {
         // check for a runnable wall to the right of the player
-        wallRight = Physics.Raycast(transform.position, orientation.right, out rightWallHit, wallCheckDistance, wallMask);
+        wallRight = Physics.Raycast(transform.position, playerCam.right, out rightWallHit, wallCheckDistance, wallMask);
         // check for a runnable wall to the left of the player
-        wallLeft = Physics.Raycast(transform.position, -orientation.right, out leftWallHit, wallCheckDistance, wallMask);
+        wallLeft = Physics.Raycast(transform.position, -playerCam.right, out leftWallHit, wallCheckDistance, wallMask);
 
         // if a wall is detected, assign it as the detected wall
         if (wallRight) detectedWall = rightWallHit.transform;
@@ -737,9 +728,9 @@ public class Advanced_Movement_System : MonoBehaviour
         rigidBody.velocity = new Vector3(rigidBody.velocity.x, 0f, rigidBody.velocity.z);
 
         // Apply camera effects
-        playerCam.DoFOV(90f);
-        if (wallLeft) playerCam.DoTilt(-5f);
-        if (wallRight) playerCam.DoTilt(5f);
+        //playerCam.DoFOV(90f);
+        //if (wallLeft) playerCam.DoTilt(-5f);
+        //if (wallRight) playerCam.DoTilt(5f);
 
         if (wallLeft) lastWallRun = leftWallHit.transform;
         if (wallRight) lastWallRun = rightWallHit.transform;
@@ -756,8 +747,10 @@ public class Advanced_Movement_System : MonoBehaviour
         // calculate the forward vector of the wall
         Vector3 wallForward = Vector3.Cross(wallNormal, transform.up);
 
+        Vector3 dir = new Vector3(playerCam.forward.x, 0, playerCam.forward.z).normalized;
+
         // calculate which direction the player is moving in
-        if ((orientation.forward - wallForward).magnitude > (orientation.forward - -wallForward).magnitude)
+        if ((dir - wallForward).magnitude > (dir - -wallForward).magnitude)
         {
             wallForward = -wallForward;
         }
@@ -784,8 +777,8 @@ public class Advanced_Movement_System : MonoBehaviour
         doubleJump = true;
 
         // reset camera fx
-        playerCam.DoFOV(70f);
-        playerCam.DoTilt(0f);
+        //playerCam.DoFOV(70f);
+        //playerCam.DoTilt(0f);
     }
 
     private void WallJump()
