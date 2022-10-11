@@ -578,8 +578,8 @@ public class Advanced_Movement_System : MonoBehaviour
     private void CheckForSlope()
     {
         // checks if the player is on a slope object
-        onSlope = Physics.CheckSphere(groundCheck.position, 0.4f, slopeMask);
-        //Debug.DrawRay(groundCheck.position, Vector3.down * 0.4f, Color.red);
+        onSlope = Physics.Raycast(groundCheck.position, Vector3.down,0.4f, slopeMask);
+        Debug.DrawRay(groundCheck.position, Vector3.down * 0.4f, Color.red);
     }
 
     private void StartSliding()
