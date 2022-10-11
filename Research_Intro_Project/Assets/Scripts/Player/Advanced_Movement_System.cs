@@ -609,7 +609,9 @@ public class Advanced_Movement_System : MonoBehaviour
     private void ReducePlayerScale(float scale, float force)
     {
         // reduces the scale of the collider object
-        gameObject.transform.localScale = new Vector3(gameObject.transform.localScale.x, gameObject.transform.localScale.y * scale, gameObject.transform.localScale.z);
+        //gameObject.transform.localScale = new Vector3(gameObject.transform.localScale.x, gameObject.transform.localScale.y * scale, gameObject.transform.localScale.z);
+        playerCollider.height *= scale;
+        playerCollider.center = new Vector3(0, -scale, 0);
         // Push the player toward the ground
         rigidBody.AddForce(Vector3.down * force, ForceMode.Impulse);
 
@@ -619,7 +621,9 @@ public class Advanced_Movement_System : MonoBehaviour
     private void IncreasePlayerScale()
     {
         // Increase the scale of the collider object back to original scale
-        gameObject.transform.localScale = new Vector3(gameObject.transform.localScale.x, startYScale, gameObject.transform.localScale.z);
+        //gameObject.transform.localScale = new Vector3(gameObject.transform.localScale.x, startYScale, gameObject.transform.localScale.z);
+        playerCollider.height = 2;
+        playerCollider.center = new Vector3(0, 0, 0);
         // IDEALLY THERE WOULD BE AN ANIMATION THAT WOULD BE TRANSITIONED BACK TO STANDING HERE
     }
     #endregion
