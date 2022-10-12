@@ -6,7 +6,7 @@ public class Advanced_Movement_System : MonoBehaviour
 {
     #region VARIABLES
     [Header("Controls")]
-    private InputManager controls;
+    private PlayerControls controls;
 
     [Header("Components")]
     public Rigidbody rigidBody;
@@ -108,7 +108,7 @@ public class Advanced_Movement_System : MonoBehaviour
     #region INITIALISE
     private void Awake()
     {
-        controls = InputManager.Instance;
+        controls = new PlayerControls();
     }
 
     private void Start()
@@ -116,11 +116,21 @@ public class Advanced_Movement_System : MonoBehaviour
         startYScale = gameObject.transform.localScale.y;
 
         // jump when the jump control is pressed
-        controls.playerControls.Player.Jump.performed += ctx => Jump();
+        controls.Player.Jump.performed += ctx => Jump();
         // Crouch when the crouch control is pressed
-        controls.playerControls.Player.Crouch.started += ctx => StartCrouch();
+        controls.Player.Crouch.started += ctx => StartCrouch();
         // when crouch is released, cancel the crouch
-        controls.playerControls.Player.Crouch.canceled += ctx => CancelCrouch();
+        controls.Player.Crouch.canceled += ctx => CancelCrouch();
+    }
+
+    private void OnEnable()
+    {
+        controls.Enable();
+    }
+
+    private void OnDisable()
+    {
+        controls.Disable();
     }
     #endregion
 
@@ -159,7 +169,7 @@ public class Advanced_Movement_System : MonoBehaviour
             desiredMoveSpeed = crouchSlideSpeed;
         }
         // Sprinting state
-        else if (controls.playerControls.Player.Sprint.inProgress && isGrounded && !isCrouchSlide)
+        else if (controls.Player.Sprint.inProgress && isGrounded && !isCrouchSlide)
         {
             state = MOVEMENT_STATE.SPRINT;
             desiredMoveSpeed = sprintSpeed;
@@ -308,7 +318,7 @@ public class Advanced_Movement_System : MonoBehaviour
     private void Inputs()
     {
         // Get the input for the movement axis (wasd, joystick, etc)
-        moveInput = controls.GetPlayerMovement();
+        moveInput = controls.Player.Move.ReadValue<Vector2>();
     }
     #endregion
 
@@ -524,11 +534,11 @@ public class Advanced_Movement_System : MonoBehaviour
 
         CheckCanStand();
 
-        if (canStand && !controls.playerControls.Player.Crouch.inProgress)
+        if (canStand && !controls.Player.Crouch.inProgress)
         {
             IncreasePlayerScale();
         }
-        else if (controls.playerControls.Player.Crouch.inProgress)
+        else if (controls.Player.Crouch.inProgress)
         {
             crouching = true;
         }
@@ -640,7 +650,7 @@ public class Advanced_Movement_System : MonoBehaviour
             rigidBody.drag = groundDrag;
 
             // reset double jump
-            if (!controls.playerControls.Player.Jump.inProgress) doubleJump = false;
+            if (!controls.Player.Jump.inProgress) doubleJump = false;
 
             // reset wall run
             lastWallRun = null;
