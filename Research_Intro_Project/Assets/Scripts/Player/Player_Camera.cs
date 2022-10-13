@@ -2,70 +2,44 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using DG.Tweening;
+using Cinemachine;
 
 public class Player_Camera : MonoBehaviour
 {
-    #region VARIABLES
-    [Header("Controls")]
-    private PlayerControls controls;
-    public float sensitivityX;
-    public float sensitivityY;
+    public CinemachineVirtualCamera virtualCamera;
+    public CinemachineRecomposer recomp;
 
-    [Header("Components")]
-    public Transform orientation;
-    public Transform camHolder;
-
-    private float xRotation;
-    private float yRotation;
-    #endregion
-
-    #region INITIALISE
-    private void Awake()
-    {
-        controls = new PlayerControls();
-    }
+    private float targetFOV;
+    private float targetTilt;
 
     private void Start()
     {
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;
-    }
 
-    private void OnEnable()
+        targetFOV = virtualCamera.m_Lens.FieldOfView;
+    }
+    private void Update()
     {
-        controls.Enable();
+        if (virtualCamera.m_Lens.FieldOfView != targetFOV)
+        {
+            virtualCamera.m_Lens.FieldOfView = Mathf.Lerp(virtualCamera.m_Lens.FieldOfView, targetFOV, 0.1f);
+        }
+
+        if (transform.localRotation.z != targetTilt)
+        {
+            recomp.m_Dutch = Mathf.Lerp(recomp.m_Dutch, targetTilt, 0.25f);
+        }
+
     }
-    private void OnDisable()
-    {
-        controls.Disable();
-    }
-    #endregion
-
-    #region UPDATE
-    private void LateUpdate()
-    {
-        //float mouseX = controls.Player.Look.ReadValue<Vector2>().x * Time.deltaTime * sensitivityX;
-        //float mouseY = controls.Player.Look.ReadValue<Vector2>().y * Time.deltaTime * sensitivityY;
-
-        //yRotation += mouseX;
-
-        //xRotation -= mouseY;
-        //xRotation = Mathf.Clamp(xRotation, -90f, 90f);
-
-        //camHolder.rotation = Quaternion.Euler(xRotation, yRotation, 0f);
-        //orientation.rotation = Quaternion.Euler(0, yRotation, 0);
-
-        //orientation.rotation = Quaternion.Euler(0, transform.rotation.eulerAngles.y, 0);
-    }
-    #endregion
 
     public void DoFOV(float endValue)
     {
-        GetComponent<Camera>().DOFieldOfView(endValue, 0.25f);
+        targetFOV = endValue;
     }
 
     public void DoTilt(float zTilt)
     {
-        transform.DOLocalRotate(new Vector3(0, 0, zTilt), 0.25f);
+        targetTilt = zTilt;
     }
 }

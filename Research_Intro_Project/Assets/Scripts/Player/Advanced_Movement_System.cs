@@ -13,6 +13,15 @@ public class Advanced_Movement_System : MonoBehaviour
     public CapsuleCollider playerCollider;
     public Transform crouchCheck;
     public Transform playerCam;
+    public Transform camHolder;
+    public Player_Camera camScript;
+
+    [Header("Scales")]
+    public float camStartYPos;
+    public float camCrouchYPos;
+    public float slideYScale;
+    public float crouchYScale;
+    public float crouchSlideYScale;
 
     [Header("Movement")]
     public float groundDrag;
@@ -53,22 +62,17 @@ public class Advanced_Movement_System : MonoBehaviour
     private bool exitingSlope;
     private bool onSlope;
     private bool isSlopeSliding;
-    public float slideYScale;
 
     [Header("Crouching")]
-    public float crouchYScale;
     private bool crouching;
 
     [Header("Crouch Slide")]
-    public float crouchSlideYScale;
-    private bool isCrouchSlide;
-    private bool wasCrouchSliding;
     public float slideForce;
+    private bool isCrouchSlide;
     private float slideTimer;
     public float maxSlideTime;
 
     [Header("Standing")]
-    private float startYScale;
     private bool canStand;
     private bool tryingToStand;
 
@@ -113,7 +117,6 @@ public class Advanced_Movement_System : MonoBehaviour
 
     private void Start()
     {
-        startYScale = gameObject.transform.localScale.y;
 
         // jump when the jump control is pressed
         controls.Player.Jump.performed += ctx => Jump();
@@ -449,7 +452,10 @@ public class Advanced_Movement_System : MonoBehaviour
 
     private void StartCrouch()
     {
+        if (!isGrounded) return;
+
         if (crouching) return;
+
         // if the player isnt sprinting, make player crouch
         if (state != MOVEMENT_STATE.SPRINT)
         {
@@ -460,17 +466,17 @@ public class Advanced_Movement_System : MonoBehaviour
         else if (state == MOVEMENT_STATE.SPRINT)
         {
             StartCrouchSlide();
+            return;
         }
     }
     private void CancelCrouch()
     {
-        if (isCrouchSlide)
+        if (isCrouchSlide && slideTimer <= 0f)
         {
             EndSlide();
             return;
         }
-
-        wasCrouchSliding = false;
+        else if (isCrouchSlide && slideTimer > 0) return;
 
         // if the player can stand up, make them
         if (canStand)
@@ -496,6 +502,8 @@ public class Advanced_Movement_System : MonoBehaviour
     #region CROUCH SLIDING
     private void StartCrouchSlide()
     {
+        if (!isGrounded) return;
+
         if (moveInput != Vector2.zero)
         {
             isCrouchSlide = true;
@@ -509,8 +517,9 @@ public class Advanced_Movement_System : MonoBehaviour
     private void CrouchSlideMove()
     {
         Vector3 v3MoveDir = playerCam.forward * moveInput.y + playerCam.right * moveInput.x;
+        v3MoveDir.y = 0;
 
-        if (OnSlope() || rigidBody.velocity.y > -0.1f)
+        if (!OnSlope() || rigidBody.velocity.y > -0.1f)
         {
             rigidBody.AddForce(v3MoveDir.normalized * slideForce, ForceMode.Force);
 
@@ -529,16 +538,17 @@ public class Advanced_Movement_System : MonoBehaviour
 
     private void EndSlide()
     {
+        if (slideTimer > 0f) return;
+
         isCrouchSlide = false;
-        wasCrouchSliding = false;
 
         CheckCanStand();
 
-        if (canStand && !controls.Player.Crouch.inProgress)
+        if (canStand && !controls.Player.Crouch.IsPressed())
         {
             IncreasePlayerScale();
         }
-        else if (controls.Player.Crouch.inProgress)
+        else if (controls.Player.Crouch.IsPressed())
         {
             crouching = true;
         }
@@ -589,7 +599,6 @@ public class Advanced_Movement_System : MonoBehaviour
     {
         // checks if the player is on a slope object
         onSlope = Physics.Raycast(groundCheck.position, Vector3.down,0.4f, slopeMask);
-        Debug.DrawRay(groundCheck.position, Vector3.down * 0.4f, Color.red);
     }
 
     private void StartSliding()
@@ -610,6 +619,7 @@ public class Advanced_Movement_System : MonoBehaviour
     {
         // calculates direction of movement (always moving forward even without an input)
         Vector3 v3MoveDir = playerCam.forward * moveInput.y + playerCam.right * moveInput.x;
+        v3MoveDir.y = 0;
         // Applies the movement force to make the player move down the slope
         rigidBody.AddForce(GetSlopeMoveDirection(v3MoveDir) * 10f * moveSpeed, ForceMode.Force);
     }
@@ -625,7 +635,11 @@ public class Advanced_Movement_System : MonoBehaviour
         // Push the player toward the ground
         rigidBody.AddForce(Vector3.down * force, ForceMode.Impulse);
 
-        // IDEALLY A CROUCH/SLIDE ANIMATION WOULD BE PLAYED HERE
+        if (!isSlopeSliding)
+        {
+            camHolder.localPosition = new Vector3(camHolder.localPosition.x, camCrouchYPos, camHolder.localPosition.z);
+        }
+
     }
 
     private void IncreasePlayerScale()
@@ -634,7 +648,8 @@ public class Advanced_Movement_System : MonoBehaviour
         //gameObject.transform.localScale = new Vector3(gameObject.transform.localScale.x, startYScale, gameObject.transform.localScale.z);
         playerCollider.height = 2;
         playerCollider.center = new Vector3(0, 0, 0);
-        // IDEALLY THERE WOULD BE AN ANIMATION THAT WOULD BE TRANSITIONED BACK TO STANDING HERE
+
+        camHolder.localPosition = new Vector3(camHolder.localPosition.x, camStartYPos, camHolder.localPosition.z);
     }
     #endregion
 
@@ -742,9 +757,9 @@ public class Advanced_Movement_System : MonoBehaviour
         rigidBody.velocity = new Vector3(rigidBody.velocity.x, 0f, rigidBody.velocity.z);
 
         // Apply camera effects
-        //playerCam.DoFOV(90f);
-        //if (wallLeft) playerCam.DoTilt(-5f);
-        //if (wallRight) playerCam.DoTilt(5f);
+        camScript.DoFOV(90f);
+        if (wallLeft) camScript.DoTilt(-5f);
+        if (wallRight) camScript.DoTilt(5f);
 
         if (wallLeft) lastWallRun = leftWallHit.transform;
         if (wallRight) lastWallRun = rightWallHit.transform;
@@ -791,8 +806,8 @@ public class Advanced_Movement_System : MonoBehaviour
         doubleJump = true;
 
         // reset camera fx
-        //playerCam.DoFOV(70f);
-        //playerCam.DoTilt(0f);
+        camScript.DoFOV(70f);
+        camScript.DoTilt(0f);
     }
 
     private void WallJump()
