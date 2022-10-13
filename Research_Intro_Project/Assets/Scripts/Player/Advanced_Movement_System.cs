@@ -15,15 +15,15 @@ public class Advanced_Movement_System : MonoBehaviour
     public Transform playerCam;
     public Transform camHolder;
     public Player_Camera camScript;
+    public Transform model;
+    public Transform stepRayUpper;
+    public Transform stepRayLower;
 
     [Header("Scales")]
     public float startScale;
     public float camStartYPos;
     public float camCrouchYPos;
-    public float camSlideYPos;
-    public float slideYScale;
     public float crouchYScale;
-    public float crouchSlideYScale;
 
     [Header("Movement")]
     public float groundDrag;
@@ -47,6 +47,7 @@ public class Advanced_Movement_System : MonoBehaviour
     public Transform groundCheck;
     public LayerMask groundMask;
     private bool isGrounded;
+    private int stepsSinceLastGrounded;
 
     [Header("Jumping")]
     public float jumpCooldown;
@@ -59,12 +60,17 @@ public class Advanced_Movement_System : MonoBehaviour
 
     [Header("Slope Handling")]
     public LayerMask slopeMask;
-    private float maxSlopeAngle;
+    public float maxSlopeAngle;
     private RaycastHit slopeHit;
     private bool exitingSlope;
+    private bool enteredSlope;
     private bool onSlope;
     private bool isSlopeSliding;
     private RaycastHit slideHit;
+
+    [Header("Step Management")]
+    public float stepheight;
+    public float stepSmooth;
 
     [Header("Crouching")]
     private bool crouching;
@@ -117,6 +123,8 @@ public class Advanced_Movement_System : MonoBehaviour
     {
         controls = new PlayerControls();
         startScale = playerCollider.height;
+
+        stepRayUpper.localPosition = new Vector3(stepRayUpper.localPosition.x, -(1 - stepheight), stepRayUpper.localPosition.z);
     }
 
     private void Start()
@@ -232,11 +240,14 @@ public class Advanced_Movement_System : MonoBehaviour
     #region UPDATE/FIXED UPDATE
     private void Update()
     {
+        transform.rotation = Quaternion.AngleAxis(playerCam.eulerAngles.y, Vector3.up);
+
         // Function that checks if player is on ground
         GroundCheck();
 
         // function that checks for any inputs
         Inputs();
+
         // function that checks if player is on a slope
         CheckForSlope();
 
@@ -282,10 +293,28 @@ public class Advanced_Movement_System : MonoBehaviour
                 Stand();
             }
         }
+
+        if (!OnSlope())
+        {
+            enteredSlope = false;
+        }
     }
 
     private void FixedUpdate()
     {
+        if (OnSlope() && !enteredSlope)
+        {
+            if (state == MOVEMENT_STATE.SPRINT)
+            {
+                rigidBody.AddForce(Vector3.down * 300f, ForceMode.Force);
+            }
+            else
+            {
+                rigidBody.AddForce(Vector3.down * 200f, ForceMode.Force);
+            }
+            enteredSlope = true;
+        }
+
         // when player is on a slope, use the slope movement
         if (OnSlope() && !exitingSlope)
         {
@@ -314,6 +343,8 @@ public class Advanced_Movement_System : MonoBehaviour
             MovePlayer();
         }
 
+        StepClimb();
+
         // if the player isnt wallrunning or on a slope then gravity should be on
         if (!wallRunning) rigidBody.useGravity = !OnSlope();
 
@@ -335,12 +366,8 @@ public class Advanced_Movement_System : MonoBehaviour
 
     private void MovePlayer()
     {
-        // TODO: stop movement for forward when on slope
-
         // Calculate the direction in which to move
-        //Vector3 facingDir = new Vector3(playerCam.transform.forward.x, 0, playerCam.transform.forward.z).normalized;
-        Vector3 v3MoveDir = playerCam.forward * moveInput.y + playerCam.right * moveInput.x;
-        v3MoveDir.y = 0;
+        Vector3 v3MoveDir = transform.forward * moveInput.y + transform.right * moveInput.x;
 
         if (isGrounded)
         {
@@ -352,7 +379,6 @@ public class Advanced_Movement_System : MonoBehaviour
             // add force to the player to move, but reduce it as they are in air
             rigidBody.AddForce(v3MoveDir.normalized * moveSpeed * 10f * airMultiplier, ForceMode.Force);
         }
-
     }
     #endregion
 
@@ -537,7 +563,7 @@ public class Advanced_Movement_System : MonoBehaviour
         {
             isCrouchSlide = true;
 
-            ReducePlayerScale(crouchSlideYScale, 5f, camSlideYPos);
+            ReducePlayerScale(crouchYScale, 5f, camCrouchYPos);
 
             slideTimer = maxSlideTime;
         }
@@ -545,8 +571,7 @@ public class Advanced_Movement_System : MonoBehaviour
 
     private void CrouchSlideMove()
     {
-        Vector3 v3MoveDir = playerCam.forward * moveInput.y + playerCam.right * moveInput.x;
-        v3MoveDir.y = 0;
+        Vector3 v3MoveDir = transform.forward * moveInput.y + transform.right * moveInput.x;
 
         if (!OnSlope() || rigidBody.velocity.y > -0.1f)
         {
@@ -593,14 +618,14 @@ public class Advanced_Movement_System : MonoBehaviour
     private void SlopeMovement()
     {
         // Calculate the direction in which to move
-        Vector3 v3MoveDir = playerCam.forward * moveInput.y + playerCam.right * moveInput.x;
+        Vector3 v3MoveDir = transform.forward * moveInput.y + transform.right * moveInput.x;
         // add the slope movement force
-        rigidBody.AddForce(GetSlopeMoveDirection(v3MoveDir) * moveSpeed * 10f, ForceMode.Force);
+        rigidBody.AddForce(GetSlopeMoveDirection(v3MoveDir) * moveSpeed * 20f, ForceMode.Force);
 
         if (rigidBody.velocity.y > 0f)
         {
             // add a downward force to keep the player on the slope
-            rigidBody.AddForce(Vector3.down * 80f, ForceMode.Force);
+            rigidBody.AddForce(Vector3.down * 100f, ForceMode.Force);
         }
     }
 
@@ -635,7 +660,7 @@ public class Advanced_Movement_System : MonoBehaviour
     {
         isSlopeSliding = true;
         // make player collider smaller
-        ReducePlayerScale(slideYScale, 20f, camSlideYPos);
+        ReducePlayerScale(crouchYScale, 20f, camCrouchYPos);
     }
 
     private void StopSliding()
@@ -648,8 +673,8 @@ public class Advanced_Movement_System : MonoBehaviour
     private void SlidingMovement()
     {
         // calculates direction of movement (always moving forward even without an input)
-        Vector3 v3MoveDir = playerCam.forward * moveInput.y + playerCam.right * moveInput.x;
-        v3MoveDir.y = 0;
+        Vector3 v3MoveDir = transform.forward * moveInput.y + transform.right * moveInput.x;
+
         // Applies the movement force to make the player move down the slope
         rigidBody.AddForce(GetSlopeMoveDirection(v3MoveDir) * 10f * moveSpeed, ForceMode.Force);
         rigidBody.AddForce(-slideHit.normal * 5f, ForceMode.Impulse);
@@ -668,13 +693,14 @@ public class Advanced_Movement_System : MonoBehaviour
 
         playerCollider.height =  startScale * scale;
         playerCollider.center = new Vector3(0, 0 - (1- scale), 0);
+
+        model.localScale = new Vector3(model.localScale.x, scale, model.localScale.z);
+        model.localPosition = new Vector3(model.localPosition.x, -scale, model.localPosition.z);
+
         // Push the player toward the ground
         rigidBody.AddForce(Vector3.down * force, ForceMode.Impulse);
 
-        if (!isSlopeSliding)
-        {
-            camHolder.localPosition = new Vector3(camHolder.localPosition.x, camPos, camHolder.localPosition.z);
-        }
+        camHolder.localPosition = new Vector3(camHolder.localPosition.x, camPos, camHolder.localPosition.z);
 
     }
 
@@ -684,6 +710,9 @@ public class Advanced_Movement_System : MonoBehaviour
         playerCollider.radius = 0.5f;
         playerCollider.height = startScale;
         playerCollider.center = new Vector3(0, 0, 0);
+
+        model.localScale = new Vector3(model.localScale.x, 1, model.localScale.z);
+        model.localPosition = new Vector3(model.localPosition.x, 0, model.localPosition.z);
 
         camHolder.localPosition = new Vector3(camHolder.localPosition.x, camStartYPos, camHolder.localPosition.z);
     }
@@ -705,6 +734,7 @@ public class Advanced_Movement_System : MonoBehaviour
 
             // reset wall run
             lastWallRun = null;
+
         }
         else
         {
@@ -812,10 +842,8 @@ public class Advanced_Movement_System : MonoBehaviour
         // calculate the forward vector of the wall
         Vector3 wallForward = Vector3.Cross(wallNormal, transform.up);
 
-        Vector3 dir = new Vector3(playerCam.forward.x, 0, playerCam.forward.z).normalized;
-
         // calculate which direction the player is moving in
-        if ((dir - wallForward).magnitude > (dir - -wallForward).magnitude)
+        if ((transform.forward - wallForward).magnitude > (transform.forward - -wallForward).magnitude)
         {
             wallForward = -wallForward;
         }
@@ -867,6 +895,21 @@ public class Advanced_Movement_System : MonoBehaviour
     private bool AboveGround()
     {
         return !Physics.Raycast(transform.position, Vector3.down, minJumpHeight, groundMask);
+    }
+    #endregion
+
+    #region STEPS/STAIRS
+    void StepClimb()
+    {
+        RaycastHit hitLower;
+        if (Physics.Raycast(stepRayLower.position, transform.forward, out hitLower, 0.1f))
+        {
+            RaycastHit hitUpper;
+            if (!Physics.Raycast(stepRayUpper.position, transform.forward, out hitUpper, 0.2f))
+            {
+                rigidBody.position -= new Vector3(0f, -stepSmooth, 0f);
+            }
+        }
     }
     #endregion
 }
