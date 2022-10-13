@@ -801,11 +801,13 @@ MonoBehaviour:
   playerCam: {fileID: 851771327946152552}
   camHolder: {fileID: 851771329236374396}
   camScript: {fileID: 851771327946152555}
+  startScale: 0
   camStartYPos: 0.5
   camCrouchYPos: 0
-  slideYScale: 0.5
+  camSlideYPos: -0.25
+  slideYScale: 0.25
   crouchYScale: 0.5
-  crouchSlideYScale: 0.5
+  crouchSlideYScale: 0.25
   groundDrag: 5
   moveSpeed: 0
   speedIncreaseMultiplier: 10
@@ -1192,7 +1194,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 851771329839270068}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: -1, z: 0}
+  m_LocalPosition: {x: 0, y: -0.988, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
