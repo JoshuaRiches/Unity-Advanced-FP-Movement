@@ -46,14 +46,20 @@ public class Advanced_Movement_System : MonoBehaviour
     [Header("Ground Check")]
     public Transform groundCheck;
     public LayerMask groundMask;
-    private bool isGrounded;
+    public bool isGrounded;
     private int stepsSinceLastGrounded;
+    public float groundCheckDistance = 0.01f;
+    public float stickToGroundDist = 0.5f;
+    public float shellOffset = 0.1f;
+    private bool previouslyGrounded;
+    private Vector3 groundContactNormal;
 
     [Header("Jumping")]
     public float jumpCooldown;
     public float jumpForce;
     private bool readyToJump = true;
     private bool doubleJump;
+    private bool jumping;
 
     [Header("Aerial Movement")]
     public float airMultiplier;
@@ -71,6 +77,8 @@ public class Advanced_Movement_System : MonoBehaviour
     [Header("Step Management")]
     public float stepheight;
     public float stepSmooth;
+    private bool climbingStairs;
+    public LayerMask stairMask;
 
     [Header("Crouching")]
     private bool crouching;
@@ -283,6 +291,9 @@ public class Advanced_Movement_System : MonoBehaviour
         // Manages the wall running state
         WallRunState();
 
+        // checks to see if you are at steps 
+        StepClimb();
+
         //if the player is trying to stand but not crouching, set it so they are crouching (otherwise it will bug)
         if (tryingToStand && !crouching) crouching = true;
 
@@ -343,7 +354,10 @@ public class Advanced_Movement_System : MonoBehaviour
             MovePlayer();
         }
 
-        StepClimb();
+        if (previouslyGrounded && !jumping && !wallRunning && !climbingStairs)
+        {
+            StickToGround();
+        }
 
         // if the player isnt wallrunning or on a slope then gravity should be on
         if (!wallRunning) rigidBody.useGravity = !OnSlope();
@@ -368,6 +382,8 @@ public class Advanced_Movement_System : MonoBehaviour
     {
         // Calculate the direction in which to move
         Vector3 v3MoveDir = transform.forward * moveInput.y + transform.right * moveInput.x;
+
+        v3MoveDir = Vector3.ProjectOnPlane(v3MoveDir, groundContactNormal).normalized;
 
         if (isGrounded)
         {
@@ -476,6 +492,8 @@ public class Advanced_Movement_System : MonoBehaviour
         // if player is grounded or has a double jump to use and is not wall running, jump
         if (isGrounded || doubleJump && !wallRunning)
         {
+            jumping = true;
+
             readyToJump = false;
             doubleJump = !doubleJump;
 
@@ -502,7 +520,7 @@ public class Advanced_Movement_System : MonoBehaviour
     #region CROUCHING
     private void CheckCanStand()
     {
-        canStand = !Physics.CheckSphere(crouchCheck.position, 1f, groundMask);
+        canStand = !Physics.CheckSphere(crouchCheck.position, 0.5f, groundMask);
     }
 
     private void StartCrouch()
@@ -572,6 +590,7 @@ public class Advanced_Movement_System : MonoBehaviour
     private void CrouchSlideMove()
     {
         Vector3 v3MoveDir = transform.forward * moveInput.y + transform.right * moveInput.x;
+        v3MoveDir = Vector3.ProjectOnPlane(v3MoveDir, groundContactNormal).normalized;
 
         if (!OnSlope() || rigidBody.velocity.y > -0.1f)
         {
@@ -619,13 +638,14 @@ public class Advanced_Movement_System : MonoBehaviour
     {
         // Calculate the direction in which to move
         Vector3 v3MoveDir = transform.forward * moveInput.y + transform.right * moveInput.x;
+
         // add the slope movement force
         rigidBody.AddForce(GetSlopeMoveDirection(v3MoveDir) * moveSpeed * 20f, ForceMode.Force);
 
         if (rigidBody.velocity.y > 0f)
         {
             // add a downward force to keep the player on the slope
-            rigidBody.AddForce(Vector3.down * 100f, ForceMode.Force);
+            rigidBody.AddForce(Vector3.down * 80f, ForceMode.Force);
         }
     }
 
@@ -721,11 +741,18 @@ public class Advanced_Movement_System : MonoBehaviour
     #region GROUND
     private void GroundCheck()
     {
-        // check if there is a ground object under the player
-        isGrounded = Physics.CheckSphere(groundCheck.position, 0.4f, groundMask);
+        previouslyGrounded = isGrounded;
 
-        if (isGrounded)
+        float maxDist = ((playerCollider.height / 2f) - playerCollider.radius) + groundCheckDistance;
+        float rad = playerCollider.radius * (1 - shellOffset);
+
+        RaycastHit hitInfo;
+
+        if (Physics.SphereCast(transform.position, rad, Vector3.down, out hitInfo, maxDist, groundMask, QueryTriggerInteraction.Ignore))
         {
+            isGrounded = true;
+            groundContactNormal = hitInfo.normal;
+
             // Apply drag to the player
             rigidBody.drag = groundDrag;
 
@@ -735,13 +762,36 @@ public class Advanced_Movement_System : MonoBehaviour
             // reset wall run
             lastWallRun = null;
 
+            if (!previouslyGrounded && jumping)
+            {
+                jumping = false;
+            }
         }
         else
         {
+            isGrounded = false;
+            groundContactNormal = Vector3.up;
+
             // when in air there shouldnt be drag slowing down movement (not following real physics due to approximations and creating smooth player experience)
             rigidBody.drag = 0f;
         }
     }
+
+    private void StickToGround()
+    {
+        float maxDist = ((playerCollider.height / 2f) - playerCollider.radius) + stickToGroundDist;
+        float rad = playerCollider.radius * (1 - shellOffset);
+        RaycastHit hitInfo;
+
+        if (Physics.SphereCast(transform.position, rad, Vector3.down, out hitInfo, maxDist, groundMask, QueryTriggerInteraction.Ignore))
+        {
+            if (Mathf.Abs(Vector3.Angle(hitInfo.normal, Vector3.up)) < 85f)
+            {
+                rigidBody.velocity = Vector3.ProjectOnPlane(rigidBody.velocity, hitInfo.normal);
+            }
+        }
+    }
+
     #endregion
 
     #region WALL RUNNING
@@ -901,15 +951,54 @@ public class Advanced_Movement_System : MonoBehaviour
     #region STEPS/STAIRS
     void StepClimb()
     {
+        if (!isGrounded || moveInput.magnitude == 0) return;
+
         RaycastHit hitLower;
-        if (Physics.Raycast(stepRayLower.position, transform.forward, out hitLower, 0.1f))
+        if (Physics.Raycast(stepRayLower.position, transform.forward, out hitLower, 0.2f, stairMask))
         {
             RaycastHit hitUpper;
-            if (!Physics.Raycast(stepRayUpper.position, transform.forward, out hitUpper, 0.2f))
+            if (!Physics.Raycast(stepRayUpper.position, transform.forward, out hitUpper, 0.2f, stairMask))
             {
+                climbingStairs = true;
                 rigidBody.position -= new Vector3(0f, -stepSmooth, 0f);
             }
+            else
+            {
+                climbingStairs = false;
+            }
         }
+
+        RaycastHit hitLower45;
+        if (Physics.Raycast(stepRayLower.position, transform.TransformDirection(1.5f, 0, -1f), out hitLower45, 0.2f, stairMask))
+        {
+            RaycastHit hitUpper45;
+            if (!Physics.Raycast(stepRayUpper.position, transform.TransformDirection(1.5f, 0, -1f), out hitUpper45, 0.2f, stairMask))
+            {
+                climbingStairs = true;
+                rigidBody.position -= new Vector3(0f, -stepSmooth, 0f);
+            }
+            else
+            {
+                climbingStairs = false;
+            }
+        }
+        else climbingStairs = false;
+
+        RaycastHit hitLowerM45;
+        if (Physics.Raycast(stepRayLower.position, transform.TransformDirection(-1.5f, 0, -1f), out hitLowerM45, 0.2f, stairMask))
+        {
+            RaycastHit hitUpperM45;
+            if (!Physics.Raycast(stepRayUpper.position, transform.TransformDirection(-1.5f, 0, -1f), out hitUpperM45, 0.2f, stairMask))
+            {
+                climbingStairs = true;
+                rigidBody.position -= new Vector3(0f, -stepSmooth, 0f);
+            }
+            else
+            {
+                climbingStairs = false;
+            }
+        }
+        else climbingStairs = false;
     }
     #endregion
 }

@@ -184,8 +184,8 @@ MonoBehaviour:
   camHolder: {fileID: 4351925821270240075}
   camScript: {fileID: 0}
   model: {fileID: 4351925822739751862}
-  stepRayUpper: {fileID: 0}
-  stepRayLower: {fileID: 0}
+  stepRayUpper: {fileID: 1203043580614307167}
+  stepRayLower: {fileID: 4146678023248267594}
   startScale: 0
   camStartYPos: 0.5
   camCrouchYPos: 0
@@ -203,7 +203,11 @@ MonoBehaviour:
   groundCheck: {fileID: 4351925821740953728}
   groundMask:
     serializedVersion: 2
-    m_Bits: 8
+    m_Bits: 255
+  isGrounded: 0
+  groundCheckDistance: 0.1
+  stickToGroundDist: 0.5
+  shellOffset: 0.1
   jumpCooldown: 0.25
   jumpForce: 12
   airMultiplier: 0.25
@@ -211,8 +215,11 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 64
   maxSlopeAngle: 40
-  stepheight: 0
-  stepSmooth: 0
+  stepheight: 0.5
+  stepSmooth: 0.1
+  stairMask:
+    serializedVersion: 2
+    m_Bits: 512
   slideForce: 300
   maxSlideTime: 0.75
   wallMask:
@@ -365,7 +372,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 5780554786964756301}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalPosition: {x: 0, y: -0.95, z: 0.5}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -396,7 +403,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 8787594973890688165}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalPosition: {x: 0, y: -0.5, z: 0.5}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
