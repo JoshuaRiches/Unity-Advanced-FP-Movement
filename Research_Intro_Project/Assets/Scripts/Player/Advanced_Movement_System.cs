@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using Cinemachine;
 
 public class Advanced_Movement_System : MonoBehaviour
 {
@@ -13,6 +14,7 @@ public class Advanced_Movement_System : MonoBehaviour
     public CapsuleCollider playerCollider;
     public Transform crouchCheck;
     public Transform playerCam;
+    public GameObject camSettings;
     public Transform camHolder;
     public Player_Camera camScript;
     public Transform model;
@@ -248,7 +250,10 @@ public class Advanced_Movement_System : MonoBehaviour
     #region UPDATE/FIXED UPDATE
     private void Update()
     {
-        transform.rotation = Quaternion.AngleAxis(playerCam.eulerAngles.y, Vector3.up);
+        if (!isSlopeSliding)
+        {
+            transform.rotation = Quaternion.AngleAxis(playerCam.eulerAngles.y, Vector3.up);
+        }
 
         // Function that checks if player is on ground
         GroundCheck();
@@ -265,7 +270,7 @@ public class Advanced_Movement_System : MonoBehaviour
             StartSliding();
         }
         // when player leaves slope, stop sliding
-        else if (isSlopeSliding)
+        else if (!onSlope && isSlopeSliding)
         {
             StopSliding();
         }
@@ -313,21 +318,8 @@ public class Advanced_Movement_System : MonoBehaviour
 
     private void FixedUpdate()
     {
-        if (OnSlope() && !enteredSlope)
-        {
-            if (state == MOVEMENT_STATE.SPRINT)
-            {
-                rigidBody.AddForce(Vector3.down * 300f, ForceMode.Force);
-            }
-            else
-            {
-                rigidBody.AddForce(Vector3.down * 200f, ForceMode.Force);
-            }
-            enteredSlope = true;
-        }
-
         // when player is on a slope, use the slope movement
-        if (OnSlope() && !exitingSlope)
+        if (OnSlope() && !exitingSlope && !isSlopeSliding)
         {
             SlopeMovement();
         }
@@ -490,7 +482,7 @@ public class Advanced_Movement_System : MonoBehaviour
         }
 
         // if player is grounded or has a double jump to use and is not wall running, jump
-        if (isGrounded || doubleJump && !wallRunning)
+        if ((isGrounded || isSlopeSliding) || doubleJump && !wallRunning)
         {
             jumping = true;
 
@@ -673,14 +665,27 @@ public class Advanced_Movement_System : MonoBehaviour
     private void CheckForSlope()
     {
         // checks if the player is on a slope object
-        onSlope = Physics.Raycast(groundCheck.position, Vector3.down, out slideHit,  1f, slopeMask);
+        onSlope = Physics.Raycast(groundCheck.position, Vector3.down, out slideHit, 0.5f, slopeMask);
     }
 
     private void StartSliding()
     {
+        readyToJump = true;
+
         isSlopeSliding = true;
+
+        Vector3 faceDir = new Vector3(slideHit.normal.x, 0, slideHit.normal.z).normalized;
+        transform.forward = faceDir;
+
         // make player collider smaller
         ReducePlayerScale(crouchYScale, 20f, camCrouchYPos);
+
+        // Push the player toward the ground
+        //rigidBody.AddForce(Vector3.down * 20f, ForceMode.Impulse);
+
+        // lock camera
+        camSettings.GetComponent<CinemachineInputProvider>().enabled = false;
+        playerCam.forward = faceDir;
     }
 
     private void StopSliding()
@@ -688,12 +693,14 @@ public class Advanced_Movement_System : MonoBehaviour
         isSlopeSliding = false;
         // return player collider scale back to normal
         IncreasePlayerScale();
+
+        camSettings.GetComponent<CinemachineInputProvider>().enabled = true;
     }
 
     private void SlidingMovement()
     {
         // calculates direction of movement (always moving forward even without an input)
-        Vector3 v3MoveDir = transform.forward * moveInput.y + transform.right * moveInput.x;
+        Vector3 v3MoveDir = transform.forward + transform.right * moveInput.x;
 
         // Applies the movement force to make the player move down the slope
         rigidBody.AddForce(GetSlopeMoveDirection(v3MoveDir) * 10f * moveSpeed, ForceMode.Force);
@@ -717,7 +724,7 @@ public class Advanced_Movement_System : MonoBehaviour
         model.localScale = new Vector3(model.localScale.x, scale, model.localScale.z);
         model.localPosition = new Vector3(model.localPosition.x, -scale, model.localPosition.z);
 
-        // Push the player toward the ground
+        // Push the player toward the ground - do not remove otherwise stuff breaks
         rigidBody.AddForce(Vector3.down * force, ForceMode.Impulse);
 
         camHolder.localPosition = new Vector3(camHolder.localPosition.x, camPos, camHolder.localPosition.z);
