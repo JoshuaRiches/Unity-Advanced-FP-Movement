@@ -674,6 +674,7 @@ public class Advanced_Movement_System : MonoBehaviour
 
         isSlopeSliding = true;
 
+        // make ther player face forwards relative to the slope
         Vector3 faceDir = new Vector3(slideHit.normal.x, 0, slideHit.normal.z).normalized;
         transform.forward = faceDir;
 
@@ -682,10 +683,6 @@ public class Advanced_Movement_System : MonoBehaviour
 
         // Push the player toward the ground
         //rigidBody.AddForce(Vector3.down * 20f, ForceMode.Impulse);
-
-        // lock camera
-        camSettings.GetComponent<CinemachineInputProvider>().enabled = false;
-        playerCam.forward = faceDir;
     }
 
     private void StopSliding()
@@ -693,8 +690,6 @@ public class Advanced_Movement_System : MonoBehaviour
         isSlopeSliding = false;
         // return player collider scale back to normal
         IncreasePlayerScale();
-
-        camSettings.GetComponent<CinemachineInputProvider>().enabled = true;
     }
 
     private void SlidingMovement()
